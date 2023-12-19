@@ -32,14 +32,80 @@
 #
 # Author: Ioan Sucan
 
+import os
+from tempfile import NamedTemporaryFile
+import yaml
+import glob
+import subprocess
+from ament_index_python.packages import get_package_share_directory
+
 from moveit_ros_planning_interface import _moveit_roscpp_initializer
 
+def load_file(package_name, file_path):
+    package_path = get_package_share_directory(package_name)
+    absolute_file_path = os.path.join(package_path, file_path)
+    try:
+        with open(absolute_file_path, 'r') as file:
+            return file.read()
+    except EnvironmentError:
+        return None
 
-def roscpp_initialize(args):
-    # remove __name:= argument
-    args2 = [a for a in args if not a.startswith("__name:=")]
+def load_yaml(package_name, file_path):
+    package_path = get_package_share_directory(package_name)
+    absolute_file_path = os.path.join(package_path, file_path)
+    try:
+        with open(absolute_file_path, 'r') as file:
+            return yaml.safe_load(file)
+    except EnvironmentError:
+        return None
+
+def load_kinematics(name):
+    return load_yaml(name+'_moveit_config', 'config/kinematics.yaml')
+
+def dump_param_file(params, delete=False):
+    with NamedTemporaryFile(mode="w", prefix="wrap_moveit_param_", delete=delete) as f:
+        param_file_ = f.name
+        param_dict = { '/**': {'ros__parameters': params } }
+        yaml.dump(param_dict, f, default_flow_style=False)
+        return param_file_
+
+def get_robot_semantic():
+    res=subprocess.run(["ros2", "param", "get", "/move_group", "robot_description_semantic"], capture_output=True)
+    return res.stdout.decode()
+
+def gen_srdf_param():
+   srdf=get_robot_semantic()
+   fname=dump_param_file({"robot_description_semantic": srdf[17:]})
+   return ["--params-file", fname]
+
+def gen_kinematics_param(name):
+   kinematics=load_kinematics(name)
+   fname=dump_param_file(kinematics)
+   return ["--params-file", fname]
+
+def clear_tempfiles(name="wrap_moveit_param_"):
+    flist=glob.glob("/tmp/"+name+"*")
+    for fn in flist:
+      os.remove(fn)
+
+def roscpp_initialize(args, robot_name="", use_sim=False):
+    if len(args) > 1:
+      # remove __name:= argument
+      #args2 = [a for a in args if not a.startswith("__name:=")]
+      args2=[]
+      for a in args:
+        if a:
+          if a.startswith("__name:="):
+            args2.append(a+"_wrap_python")
+          else:
+            args2.append(a)
+    else:
+     args2=["--ros-args", "-p", "use_sim_time:="+str(use_sim)] + gen_srdf_param()
+     if robot_name:
+         args2 += gen_kinematics_param(robot_name)
+
+     args2 = [a for a in args2 if a]
     _moveit_roscpp_initializer.roscpp_init("move_group_commander_wrappers", args2)
-
 
 def roscpp_shutdown():
     _moveit_roscpp_initializer.roscpp_shutdown()

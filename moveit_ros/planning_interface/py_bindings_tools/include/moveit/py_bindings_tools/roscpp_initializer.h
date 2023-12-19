@@ -33,9 +33,11 @@
  *********************************************************************/
 
 /* Author: Ioan Sucan */
+/* Author: Isao Hara */
 
 #pragma once
 
+#include <rclcpp/rclcpp.hpp>
 #include <boost/python.hpp>
 #include <string>
 
@@ -54,6 +56,8 @@ public:
   ROScppInitializer();
   ROScppInitializer(boost::python::list& argv);
   ROScppInitializer(const std::string& node_name, boost::python::list& argv);
+
+  std::shared_ptr<rclcpp::Node> rclcpp_node;
 };
 
 /** \brief This function can be used to specify the ROS command line arguments for the internal ROScpp instance;
@@ -61,14 +65,18 @@ public:
 void roscpp_set_arguments(const std::string& node_name, boost::python::list& argv);
 
 /** \brief Initialize ROScpp with specified command line args */
-void roscpp_init(const std::string& node_name, boost::python::list& argv);
+void
+roscpp_init(const std::string& node_name, boost::python::list& argv);
 
 /** \brief Initialize ROScpp with specified command line args */
-void roscpp_init(boost::python::list& argv);
+std::shared_ptr<rclcpp::Node>
+roscpp_init(boost::python::list& argv);
 
 /** \brief Initialize ROScpp with default command line args */
-void roscpp_init();
+std::shared_ptr<rclcpp::Node> roscpp_init();
 
 void roscpp_shutdown();
+
+std::shared_ptr<rclcpp::Node> get_rclcpp_node();
 }  // namespace py_bindings_tools
 }  // namespace moveit

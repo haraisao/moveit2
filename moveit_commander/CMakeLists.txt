@@ -1,14 +1,13 @@
-cmake_minimum_required(VERSION 3.1.3)
+cmake_minimum_required(VERSION 3.22)
 project(moveit_commander)
 
-find_package(catkin REQUIRED)
+#find_package(ament_cmake REQUIRED)
+find_package(PythonInterp REQUIRED)
+find_package(PythonLibs "${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}" REQUIRED)
 
-catkin_python_setup()
+set(PYTHON_LIB_DESTINATION "local/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/dist-packages")
 
-catkin_package()
+install(DIRECTORY src/ DESTINATION ${PYTHON_LIB_DESTINATION})
 
-catkin_install_python(
-  PROGRAMS bin/${PROJECT_NAME}_cmdline.py
-  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+#add_subdirectory(test)
 
-add_subdirectory(test)

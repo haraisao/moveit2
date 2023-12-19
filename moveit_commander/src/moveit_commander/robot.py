@@ -178,15 +178,15 @@ class RobotCommander(object):
         """
         mrkr = MarkerArray()
         if not args:
-            conversions.msg_from_string(mrkr, self._r.get_robot_markers())
+            mrkr = conversions.msg_from_string(mrkr, self._r.get_robot_markers())
         else:
             if isinstance(args[0], RobotState):
                 msg_str = conversions.msg_to_string(args[0])
-                conversions.msg_from_string(mrkr, self._r.get_robot_markers(msg_str))
+                mrkr = conversions.msg_from_string(mrkr, self._r.get_robot_markers(msg_str))
             elif isinstance(args[0], dict):
-                conversions.msg_from_string(mrkr, self._r.get_robot_markers(*args))
+                mrkr = conversions.msg_from_string(mrkr, self._r.get_robot_markers(*args))
             elif isinstance(args[0], str):
-                conversions.msg_from_string(mrkr, self._r.get_group_markers(*args))
+                mrkr = conversions.msg_from_string(mrkr, self._r.get_group_markers(*args))
             else:
                 raise MoveItCommanderException("Unexpected type")
         return mrkr
@@ -242,8 +242,9 @@ class RobotCommander(object):
 
     def get_current_state(self):
         """Get a RobotState message describing the current state of the robot"""
-        s = RobotState()
-        s.deserialize(self._r.get_current_state())
+        #s = RobotState()
+        #s.deserialize(self._r.get_current_state())
+        s = conversions.deserialize_message(self._r.get_current_state(), RobotState)
         return s
 
     def get_current_variable_values(self):

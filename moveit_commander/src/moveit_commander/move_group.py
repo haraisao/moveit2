@@ -47,8 +47,12 @@ from moveit_msgs.msg import (
     MotionPlanRequest,
 )
 from sensor_msgs.msg import JointState
-import rospy
-import tf
+#import rospy
+import rclpy
+import rclpy.clock
+#import tf
+import numpy
+import quaternion
 from moveit_ros_planning_interface import _moveit_move_group_interface
 from .exception import MoveItCommanderException
 import moveit_commander.conversions as conversions
@@ -60,12 +64,16 @@ class MoveGroupCommander(object):
     """
 
     def __init__(
-        self, name, robot_description="robot_description", ns="", wait_for_servers=5.0
+        self, name, robot_description="robot_description", wait_for_servers=5.0
     ):
         """Specify the group name for which to construct this commander instance. Throws an exception if there is an initialization error."""
-        self._g = _moveit_move_group_interface.MoveGroupInterface(
-            name, robot_description, ns, wait_for_servers
-        )
+        try:
+          self._g = _moveit_move_group_interface.MoveGroupInterface(
+            name, robot_description, wait_for_servers
+          )
+        except:
+          print("ERROR")
+          self._g=None
 
     def get_name(self):
         """Get the name of the group this instance was initialized for"""
@@ -103,7 +111,7 @@ class MoveGroupCommander(object):
     def get_interface_description(self):
         """Get the description of the planner interface (list of planner ids)"""
         desc = PlannerInterfaceDescription()
-        conversions.msg_from_string(desc, self._g.get_interface_description())
+        desc = conversions.msg_from_string(desc, self._g.get_interface_description())
         return desc
 
     def get_pose_reference_frame(self):
@@ -170,7 +178,7 @@ class MoveGroupCommander(object):
         >>> from sensor_msgs.msg import JointState
         >>> joint_state = JointState()
         >>> joint_state.header = Header()
-        >>> joint_state.header.stamp = rospy.Time.now()
+        >>> joint_state.header.stamp = rclpy.clock.Clock().now().to_msg()
         >>> joint_state.name = ['joint_a', 'joint_b']
         >>> joint_state.position = [0.17, 0.34]
         >>> moveit_robot_state = RobotState()
@@ -183,14 +191,14 @@ class MoveGroupCommander(object):
         """Get the current state of the robot bounded."""
         s = RobotState()
         c_str = self._g.get_current_state_bounded()
-        conversions.msg_from_string(s, c_str)
+        s = conversions.msg_from_string(s, c_str)
         return s
 
     def get_current_state(self):
         """Get the current state of the robot."""
         s = RobotState()
         c_str = self._g.get_current_state()
-        conversions.msg_from_string(s, c_str)
+        s = conversions.msg_from_string(s, c_str)
         return s
 
     def get_joint_value_target(self):
@@ -254,11 +262,13 @@ class MoveGroupCommander(object):
             r = False
             if type(arg1) is PoseStamped:
                 r = self._g.set_joint_value_target_from_pose_stamped(
-                    conversions.msg_to_string(arg1), eef, approx
+                    conversions.msg_to_string(arg1),
+                    eef, approx
                 )
             else:
                 r = self._g.set_joint_value_target_from_pose(
-                    conversions.msg_to_string(arg1), eef, approx
+                    conversions.msg_to_string(arg1),
+                    eef, approx
                 )
             if not r:
                 if approx:
@@ -368,7 +378,8 @@ class MoveGroupCommander(object):
             # by default we get orientation as a quaternion list
             # if we are updating a rotation axis however, we convert the orientation to RPY
             if axis > 2:
-                (r, p, y) = tf.transformations.euler_from_quaternion(pose[3:])
+                #(r, p, y) = tf.transformations.euler_from_quaternion(pose[3:])
+                (r, p, y) = quaternion.as_euler_angles(quaternion.from_float_array(pose[3:]))
                 pose = [pose[0], pose[1], pose[2], r, p, y]
             if axis >= 0 and axis < 6:
                 pose[axis] = pose[axis] + value
@@ -471,7 +482,7 @@ class MoveGroupCommander(object):
         """Get the actual path constraints in form of a moveit_msgs.msgs.Constraints"""
         c = Constraints()
         c_str = self._g.get_path_constraints()
-        conversions.msg_from_string(c, c_str)
+        c = conversions.msg_from_string(c, c_str)
         return c
 
     def set_path_constraints(self, value):
@@ -480,7 +491,9 @@ class MoveGroupCommander(object):
             self.clear_path_constraints()
         else:
             if type(value) is Constraints:
-                self._g.set_path_constraints_from_msg(conversions.msg_to_string(value))
+                self._g.set_path_constraints_from_msg(
+                        conversions.msg_to_string(value)
+                        )
             elif not self._g.set_path_constraints(value):
                 raise MoveItCommanderException(
                     "Unable to set path constraints " + value
@@ -494,7 +507,7 @@ class MoveGroupCommander(object):
         """Get the actual trajectory constraints in form of a moveit_msgs.msgs.TrajectoryConstraints"""
         c = TrajectoryConstraints()
         c_str = self._g.get_trajectory_constraints()
-        conversions.msg_from_string(c, c_str)
+        c = conversions.msg_from_string(c, c_str)
         return c
 
     def set_trajectory_constraints(self, value):
@@ -622,20 +635,24 @@ class MoveGroupCommander(object):
 
         (error_code_msg, trajectory_msg, planning_time) = self._g.plan()
 
-        error_code = MoveItErrorCodes()
-        error_code.deserialize(error_code_msg)
-        plan = RobotTrajectory()
+        #error_code = MoveItErrorCodes()
+        #error_code.deserialize(error_code_msg)
+        error_code=conversions.deserialize_message(error_code_msg, MoveItErrorCodes)
+        #plan = RobotTrajectory()
+        plan = conversions.deserialize_message(trajectory_msg, RobotTrajectory),
         return (
             error_code.val == MoveItErrorCodes.SUCCESS,
-            plan.deserialize(trajectory_msg),
+            #plan.deserialize(trajectory_msg),
+            plan,
             planning_time,
             error_code,
         )
 
     def construct_motion_plan_request(self):
         """Returns a MotionPlanRequest filled with the current goals of the move_group_interface"""
-        mpr = MotionPlanRequest()
-        return mpr.deserialize(self._g.construct_motion_plan_request())
+        #mpr = MotionPlanRequest()
+        #return mpr.deserialize(self._g.construct_motion_plan_request())
+        return conversions.deserialize_message(self._g.construct_motion_plan_request(), MotionPlanRequest)
 
     def compute_cartesian_path(
         self,
@@ -669,16 +686,21 @@ class MoveGroupCommander(object):
                 avoid_collisions,
             )
 
-        path = RobotTrajectory()
-        path.deserialize(ser_path)
+        #path = RobotTrajectory()
+        #path.deserialize(ser_path)
+        path = conversions.deserialize_message(ser_path, RobotTrajectory)
         return (path, fraction)
 
     def execute(self, plan_msg, wait=True):
         """Execute a previously planned path"""
         if wait:
-            return self._g.execute(conversions.msg_to_string(plan_msg))
+            return self._g.execute(
+                    conversions.msg_to_string(plan_msg)
+                    )
         else:
-            return self._g.async_execute(conversions.msg_to_string(plan_msg))
+            return self._g.async_execute(
+                    conversions.msg_to_string(plan_msg)
+                    )
 
     def attach_object(self, object_name, link_name="", touch_links=[]):
         """Given the name of an object existing in the planning scene, attach it to a link. The link used is specified by the second argument. If left unspecified, the end-effector link is used, if one is known. If there is no end-effector link, the first link in the group is used. If no link is identified, failure is reported. True is returned if an attach request was successfully sent to the move_group node. This does not verify that the attach request also was successfully applied by move_group."""
@@ -692,11 +714,15 @@ class MoveGroupCommander(object):
         """Pick the named object. A grasp message, or a list of Grasp messages can also be specified as argument."""
         if type(grasp) is Grasp:
             return self._g.pick(
-                object_name, conversions.msg_to_string(grasp), plan_only
+                object_name, 
+                conversions.msg_to_string(grasp),
+                plan_only
             )
         else:
             return self._g.pick(
-                object_name, [conversions.msg_to_string(x) for x in grasp], plan_only
+                object_name, 
+                [conversions.msg_to_string(x) for x in grasp],
+                plan_only
             )
 
     def place(self, object_name, location=None, plan_only=False):
@@ -717,7 +743,9 @@ class MoveGroupCommander(object):
             )
         elif type(location) is PlaceLocation:
             result = self._g.place(
-                object_name, conversions.msg_to_string(location), plan_only
+                object_name, 
+                conversions.msg_to_string(location),
+                plan_only
             )
         elif type(location) is list:
             if location:
@@ -764,8 +792,9 @@ class MoveGroupCommander(object):
             acceleration_scaling_factor,
             algorithm,
         )
-        traj_out = RobotTrajectory()
-        traj_out.deserialize(ser_traj_out)
+        #traj_out = RobotTrajectory()
+        #traj_out.deserialize(ser_traj_out)
+        traj_out = conversions.deserialize_message(ser_traj_out, RobotTrajectory)
         return traj_out
 
     def get_jacobian_matrix(self, joint_values, reference_point=None):
@@ -778,6 +807,8 @@ class MoveGroupCommander(object):
     def enforce_bounds(self, robot_state_msg):
         """Takes a moveit_msgs RobotState and enforces the state bounds, based on the C++ RobotState enforceBounds()"""
         s = RobotState()
-        c_str = self._g.enforce_bounds(conversions.msg_to_string(robot_state_msg))
-        conversions.msg_from_string(s, c_str)
+        c_str = self._g.enforce_bounds(
+                conversions.msg_to_string(robot_state_msg)
+                )
+        s = conversions.msg_from_string(s, c_str)
         return s

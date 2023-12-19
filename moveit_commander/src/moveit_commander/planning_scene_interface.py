@@ -32,8 +32,9 @@
 #
 # Author: Ioan Sucan, Felix Messmer
 
-import rospy
-from rosgraph.names import ns_join
+#import rospy
+import rclpy
+#from rosgraph.names import ns_join
 from . import conversions
 
 from moveit_msgs.msg import PlanningScene, CollisionObject, AttachedCollisionObject
@@ -41,7 +42,7 @@ from moveit_ros_planning_interface import _moveit_planning_scene_interface
 from geometry_msgs.msg import Pose, Point
 from shape_msgs.msg import SolidPrimitive, Plane, Mesh, MeshTriangle
 from .exception import MoveItCommanderException
-from moveit_msgs.srv import ApplyPlanningScene, ApplyPlanningSceneRequest
+#from moveit_msgs.srv import ApplyPlanningScene, ApplyPlanningSceneRequest
 
 try:
     from pyassimp import pyassimp
@@ -68,20 +69,20 @@ class PlanningSceneInterface(object):
         """Create a planning scene interface; it uses both C++ wrapped methods and scene manipulation topics."""
         self._psi = _moveit_planning_scene_interface.PlanningSceneInterface(ns)
 
-        self._pub_co = rospy.Publisher(
-            ns_join(ns, "collision_object"), CollisionObject, queue_size=100
-        )
-        self._pub_aco = rospy.Publisher(
-            ns_join(ns, "attached_collision_object"),
-            AttachedCollisionObject,
-            queue_size=100,
-        )
+        #self._pub_co = rospy.Publisher(
+        #    ns_join(ns, "collision_object"), CollisionObject, queue_size=100
+        #)
+        #self._pub_aco = rospy.Publisher(
+        #    ns_join(ns, "attached_collision_object"),
+        #    AttachedCollisionObject,
+        #    queue_size=100,
+        #)
         self.__synchronous = synchronous
-        if self.__synchronous:
-            self._apply_planning_scene_diff = rospy.ServiceProxy(
-                ns_join(ns, "apply_planning_scene"), ApplyPlanningScene
-            )
-            self._apply_planning_scene_diff.wait_for_service(service_timeout)
+        #if self.__synchronous:
+        #    self._apply_planning_scene_diff = rospy.ServiceProxy(
+        #        ns_join(ns, "apply_planning_scene"), ApplyPlanningScene
+        #    )
+        #    self._apply_planning_scene_diff.wait_for_service(service_timeout)
 
     def __submit(self, collision_object, attach=False):
         if self.__synchronous:
@@ -217,7 +218,7 @@ class PlanningSceneInterface(object):
         ops = dict()
         for key in ser_ops:
             msg = Pose()
-            conversions.msg_from_string(msg, ser_ops[key])
+            msg = conversions.msg_from_string(msg, ser_ops[key])
             ops[key] = msg
         return ops
 
@@ -229,7 +230,7 @@ class PlanningSceneInterface(object):
         objs = dict()
         for key in ser_objs:
             msg = CollisionObject()
-            conversions.msg_from_string(msg, ser_objs[key])
+            msg = conversions.msg_from_string(msg, ser_objs[key])
             objs[key] = msg
         return objs
 
@@ -241,7 +242,7 @@ class PlanningSceneInterface(object):
         aobjs = dict()
         for key in ser_aobjs:
             msg = AttachedCollisionObject()
-            conversions.msg_from_string(msg, ser_aobjs[key])
+            msg = conversions.msg_from_string(msg, ser_aobjs[key])
             aobjs[key] = msg
         return aobjs
 
@@ -359,6 +360,6 @@ class PlanningSceneInterface(object):
             scene.robot_state.attached_collision_objects = [collision_object]
         else:
             scene.world.collision_objects = [collision_object]
-        planning_scene_diff_req = ApplyPlanningSceneRequest()
+        #planning_scene_diff_req = ApplyPlanningSceneRequest()
         planning_scene_diff_req.scene = scene
         return planning_scene_diff_req

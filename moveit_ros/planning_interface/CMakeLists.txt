@@ -20,17 +20,20 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(rclpy REQUIRED)
 
-# find_package(PythonInterp REQUIRED)
-# find_package(PythonLibs "${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}" REQUIRED)
+#set(PYTHON_VERSION_MAJOR 3)
+#set(PYTHON_VERSION_MINOR 10)
+
+find_package(PythonInterp REQUIRED)
+find_package(PythonLibs "${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}" REQUIRED)
 
 find_package(Eigen3 REQUIRED)
-# find_package(eigenpy REQUIRED)
+find_package(eigenpy REQUIRED)
 
 # Finds Boost Components
 include(ConfigExtras.cmake)
 
 set(THIS_PACKAGE_INCLUDE_DIRS
-#  py_bindings_tools/include
+  py_bindings_tools/include
   common_planning_interface_objects/include
   planning_scene_interface/include
   move_group_interface/include
@@ -40,8 +43,8 @@ set(THIS_PACKAGE_LIBRARIES
   moveit_common_planning_interface_objects
   moveit_planning_scene_interface
   moveit_move_group_interface
-#  moveit_py_bindings_tools
-#  moveit_py_bindings_tools_python
+  moveit_py_bindings_tools
+  moveit_py_bindings_tools_python
 )
 
 set(THIS_PACKAGE_INCLUDE_DEPENDS
@@ -62,12 +65,13 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
 )
 
 include_directories(${THIS_PACKAGE_INCLUDE_DIRS})
+include_directories(${PYTHON_INCLUDE_DIR})
 
-# add_subdirectory(py_bindings_tools)
+add_subdirectory(py_bindings_tools)
 add_subdirectory(common_planning_interface_objects)
 add_subdirectory(planning_scene_interface)
 add_subdirectory(move_group_interface)
-# add_subdirectory(robot_interface)
+add_subdirectory(robot_interface)
 # add_subdirectory(test)
 
 #############
@@ -99,6 +103,8 @@ install(
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include
 )
+
+install(DIRECTORY python/ DESTINATION ${PYTHON_LIB_DESTINATION})
 
 ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_dependencies(${THIS_PACKAGE_INCLUDE_DEPENDS})
