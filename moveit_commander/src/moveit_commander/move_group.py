@@ -56,6 +56,7 @@ import quaternion
 from moveit_ros_planning_interface import _moveit_move_group_interface
 from .exception import MoveItCommanderException
 import moveit_commander.conversions as conversions
+import moveit_commander.roscpp_initializer as roscpp_shutdown
 
 
 class MoveGroupCommander(object):
@@ -75,6 +76,9 @@ class MoveGroupCommander(object):
           print("ERROR")
           self._g=None
 
+    def __del__(self):
+        roscpp_shutdown(()
+        return
     def get_name(self):
         """Get the name of the group this instance was initialized for"""
         return self._g.get_name()
