@@ -56,7 +56,7 @@ import quaternion
 from moveit_ros_planning_interface import _moveit_move_group_interface
 from .exception import MoveItCommanderException
 import moveit_commander.conversions as conversions
-import moveit_commander.roscpp_initializer as roscpp_shutdown
+from moveit_commander.roscpp_initializer import roscpp_shutdown
 
 
 class MoveGroupCommander(object):
